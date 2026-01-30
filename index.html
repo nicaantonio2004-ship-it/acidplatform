@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Acid Flood - The Golden Key</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: linear-gradient(to bottom, #00BFFF, #87CEEB); font-family: 'Arial', sans-serif; user-select: none; touch-action: none; -webkit-touch-callout: none; }
+
+        /* --- BACKGROUND --- */
+        .sky-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .sun { position: absolute; top: 40px; right: 40px; width: 80px; height: 80px; background: #FFD700; border-radius: 50%; box-shadow: 0 0 60px 20px rgba(255, 215, 0, 0.8); animation: sunPulse 4s infinite alternate; }
+        @keyframes sunPulse { from {transform: scale(1);} to {transform: scale(1.1);} }
+        .cloud { position: absolute; background: #fff; border-radius: 50px; opacity: 0.8; animation: moveCloud linear infinite; }
+        .cloud::after, .cloud::before { content: ''; position: absolute; background: #fff; border-radius: 50%; }
+        .cloud::after { width: 50px; height: 50px; top: -25px; left: 15px; }
+        .cloud::before { width: 30px; height: 30px; top: -15px; left: -10px; }
+        .c1 { top: 10%; width: 120px; height: 40px; animation-duration: 25s; left: -150px; }
+        .c2 { top: 20%; width: 100px; height: 35px; animation-duration: 35s; left: -150px; animation-delay: 5s; }
+        @keyframes moveCloud { 0% {left: -150px;} 100% {left: 100%;} }
+
+        /* --- UI ELEMENTS --- */
+        #ui-layer { position: fixed; top: 20px; left: 20px; right: 20px; z-index: 100; pointer-events: none; }
+        
+        #health-ui {
+            display: inline-block;
+            color: white;
+            font-size: 24px;
+            font-weight: 900;
+            text-shadow: 2px 2px 0 #000;
+            background: rgba(0,0,0,0.4);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 2px solid #76FF03;
+        }
+
+        #emerald-ui {
+            position: absolute;
+            top: 50px;
+            right: 0;
+            color: #00E676;
+            font-size: 24px;
+            font-weight: 900;
+            text-shadow: 2px 2px 0 #000;
+            background: rgba(0,0,0,0.4);
+            padding: 5px 15px;
+            border-radius: 8px;
+            border: 2px solid #00E676;
+        }
+
+        #progress-container {
+            position: absolute;
+            top: 15px;
+            right: 0;
+            width: 200px;
+            height: 20px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #progress-fill { width: 0%; height: 100%; background: #FFD700; transition: width 0.2s; }
+
+        /* --- CAMERA RIG --- */
+        #camera-rig { position: absolute; top: 0; left: 0; width: 100%; height: 100%; will-change: transform; }
+        #game-world { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+        .shake-effect { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0); }
+            20% { transform: translate(-4px, 2px); }
+            40% { transform: translate(4px, -4px); }
+            80% { transform: translate(2px, 2px); }
+        }
+
+        /* --- OBJECTS --- */
+        #player { position: absolute; width: 40px; height: 40px; background: #ff3333; border: 2px solid #990000; border-radius: 4px; z-index: 20; transition: background 0.2s; }
+        #player::before, #player::after { content: ''; position: absolute; top: 10px; width: 6px; height: 6px; background: white; border-radius: 50%; }
+        #player::before { left: 8px; } #player::after { right: 8px; }
+
+        .rock { position: absolute; border-bottom: 3px solid #111; box-shadow: 0 10px 20px rgba(0,0,0,0.5), inset 0 -10px 10px rgba(50, 205, 50, 0.2); z-index: 5; will-change: left; }
+
+        .emerald {
+            position: absolute;
+            width: 20px;
+            height: 25px;
+            background: #00E676;
+            clip-path: polygon(50% 0%, 100% 30%, 80% 100%, 20% 100%, 0% 30%);
+            z-index: 15;
+            box-shadow: 0 0 15px #00E676;
+            animation: emeraldFloat 1s infinite alternate ease-in-out;
+        }
+        @keyframes emeraldFloat { from { transform: translateY(0); } to { transform: translateY(-15px); } }
+
+        #key {
+            position: absolute;
+            width: 30px;
+            height: 50px;
+            background: #FFD700;
+            border-radius: 50% 50% 10% 10%;
+            box-shadow: 0 0 30px gold;
+            z-index: 21;
+            animation: keyFloat 1.5s infinite ease-in-out;
+        }
+        #key::after { content: ''; position: absolute; bottom: -10px; left: 10px; width: 10px; height: 20px; background: #FFD700; box-shadow: 5px 5px 0 #FFD700; }
+        @keyframes keyFloat { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-30px) rotate(10deg); } }
+
+        /* --- EFFECTS --- */
+        .shockwave { position: absolute; border-radius: 50%; border: 6px solid white; background: transparent; transform: translate(-50%, -50%); pointer-events: none; z-index: 30; animation: ringExplode 0.3s ease-out forwards; }
+        @keyframes ringExplode { 0% { width: 0px; height: 0px; opacity: 1; border-width: 15px; } 100% { width: 350px; height: 350px; opacity: 0; border-width: 0px; } }
+
+        .splash-drop { position: absolute; width: 16px; height: 24px; background: radial-gradient(circle at 30% 30%, #ccff90, #76FF03); border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; box-shadow: 0 0 15px #76FF03; z-index: 25; pointer-events: none; }
+
+        /* --- ACID --- */
+        .acid-container { position: fixed; bottom: 0; width: 100%; height: 120px; z-index: 10; }
+        .wave { position: absolute; bottom: 90px; width: 100%; height: 40px; background-repeat: repeat-x; background-size: 100px 40px; }
+        .wave-back { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40' preserveAspectRatio='none'%3E%3Cpath d='M0,20 Q25,40 50,20 T100,20 L100,40 L0,40 Z' fill='%2332CD32' opacity='0.7'/%3E%3C/svg%3E"); animation: waveFlow 4s linear infinite; }
+        .wave-front { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40' preserveAspectRatio='none'%3E%3Cpath d='M0,20 Q25,0 50,20 T100,20 L100,40 L0,40 Z' fill='%2376FF03' opacity='0.9'/%3E%3C/svg%3E"); animation: waveFlow 3s linear infinite reverse; }
+        .acid-body { position: absolute; bottom: 0; width: 100%; height: 90px; background: linear-gradient(to bottom, #76FF03, #006400); opacity: 0.9; }
+        @keyframes waveFlow { from { background-position-x: 0px; } to { background-position-x: 100px; } }
+
+        /* --- UI OVERLAYS --- */
+        .overlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 40px; font-weight: bold; text-shadow: 2px 2px 0 #000; display: none; z-index: 1000; text-align: center; }
+        .overlay button { margin-top: 20px; padding: 15px 30px; font-size: 24px; cursor: pointer; background: #FF4500; border: 3px solid #fff; color: white; border-radius: 10px; font-weight: bold; pointer-events: auto; }
+        
+        /* --- MOBILE CONTROLS --- */
+        .visual-controls, .control-zone { display: none; }
+        @media (pointer: coarse) {
+            .control-zone { display: block; position: fixed; bottom: 0; height: 40vh; z-index: 99; }
+            #zone-left { left: 0; width: 35%; }
+            #zone-right { left: 35%; width: 35%; }
+            #zone-jump { right: 0; width: 30%; }
+            .visual-controls { display: block; position: fixed; bottom: 20px; width: 100%; pointer-events: none; z-index: 98; }
+            .icon { position: absolute; background: rgba(255, 255, 255, 0.2); border: 3px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+            #vis-left { left: 20px; bottom: 20px; width: 80px; height: 80px; border-radius: 15px; font-size: 40px; }
+            #vis-right { left: 120px; bottom: 20px; width: 80px; height: 80px; border-radius: 15px; font-size: 40px; }
+            #vis-jump { right: 30px; bottom: 20px; width: 90px; height: 90px; border-radius: 50%; font-size: 20px; }
+            .pressed { background: rgba(255, 255, 255, 0.6) !important; transform: scale(0.95) translateY(2px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sky-layer">
+        <div class="sun"></div>
+        <div class="cloud c1"></div>
+        <div class="cloud c2"></div>
+    </div>
+
+    <div id="ui-layer">
+        <div id="health-ui">HEALTH: 100</div>
+        <div id="emerald-ui">💎 0</div>
+        <div id="progress-container"><div id="progress-fill"></div></div>
+    </div>
+
+    <div id="camera-rig">
+        <div id="game-world">
+            <div id="player"></div>
+            <div id="effects-layer"></div>
+            <div id="rocks-container"></div>
+        </div>
+    </div>
+
+    <div class="acid-container">
+        <div class="wave wave-back"></div>
+        <div class="wave wave-front"></div>
+        <div class="acid-body"></div>
+    </div>
+
+    <div id="game-over" class="overlay">
+        YOU DISSOLVED!<br>
+        <button id="retry-btn">TRY AGAIN</button>
+    </div>
+
+    <div id="game-win" class="overlay">
+        YOU GOT THE KEY!<br>
+        <button id="win-btn">PLAY AGAIN</button>
+    </div>
+
+    <div class="visual-controls">
+        <div id="vis-left" class="icon">←</div>
+        <div id="vis-right" class="icon">→</div>
+        <div id="vis-jump" class="icon">JUMP</div>
+    </div>
+    <div id="zone-left" class="control-zone"></div>
+    <div id="zone-right" class="control-zone"></div>
+    <div id="zone-jump" class="control-zone"></div>
+
+    <script>
+        const player = document.getElementById('player');
+        const cameraRig = document.getElementById('camera-rig'); 
+        const gameWorld = document.getElementById('game-world'); 
+        const rocksContainer = document.getElementById('rocks-container');
+        const effectsLayer = document.getElementById('effects-layer');
+        const gameOverScreen = document.getElementById('game-over');
+        const winScreen = document.getElementById('game-win');
+        const healthUI = document.getElementById('health-ui');
+        const emeraldUI = document.getElementById('emerald-ui');
+        const progressFill = document.getElementById('progress-fill');
+        
+        const visLeft = document.getElementById('vis-left');
+        const visRight = document.getElementById('vis-right');
+        const visJump = document.getElementById('vis-jump');
+
+        const retryBtn = document.getElementById('retry-btn');
+        const winBtn = document.getElementById('win-btn');
+
+        const acidHeight = 110; 
+        const goalDistance = 8000; 
+
+        let health = 100;
+        let emeralds = 0;
+        let x = 100;
+        let y = 250;
+        let vx = 0;
+        let vy = 0;
+        let isDead = false;
+        let hasWon = false;
+        let onGround = false;
+        let jumpsLeft = 2; 
+        let currentStandingRock = null; 
+
+        const gravity = 0.8;
+        const jumpStrength = -15;
+        const speed = 0.8;
+        const maxSpeed = 5.5; 
+        const frictionGround = 0.85; 
+        const frictionAir = 0.98;
+
+        let inputs = { left: false, right: false, jump: false };
+
+        let generatedX = 0;
+        let rocks = [];
+        let splashes = [];
+        let emeraldsArray = [];
+        let lastRockType = 'static'; 
+        let finalSpawned = false;
+        let keyObj = null;
+
+        let lastShockTime = 0;
+        const shockCooldown = 3000; 
+
+        function createRock(posX, width, height, elevation, type, isGoal = false) {
+            const rock = document.createElement('div');
+            rock.classList.add('rock');
+            const r1 = 5 + Math.random() * 20; const r2 = 5 + Math.random() * 20;
+            rock.style.borderRadius = `${r1}px ${r2}px 5px 5px`;
+            let grey = 60 + Math.floor(Math.random() * 60);
+            rock.style.background = `linear-gradient(to bottom, rgb(${grey},${grey+10},${grey}), #1a1a1a)`;
+            rock.style.borderTop = `2px solid rgb(${grey+40},${grey+50},${grey+40})`;
+            rock.style.left = posX + 'px';
+            rock.style.width = width + 'px';
+            rock.style.height = height + 'px';
+            rock.style.bottom = elevation + 'px';
+            rocksContainer.appendChild(rock);
+            
+            let startPhase = (type === 'touch') ? (Math.random() < 0.5 ? 0 : Math.PI) : Math.random() * 100;
+
+            const data = {
+                element: rock, startX: posX, currentLeft: posX, prevLeft: posX,
+                width, height, bottom: elevation, type,
+                speedFactor: 1.0, isSlowed: false, hitTime: 0, phase: startPhase,
+                autoSpeed: 0.05 + Math.random() * 0.03, autoRange: 60 + Math.random() * 100,
+                touchSpeed: 0.03 + Math.random() * 0.03, touchRange: 60 + Math.random() * 80,
+                isGoal
+            };
+            rocks.push(data);
+
+            // Chance to spawn an Emerald
+            if (!isGoal && Math.random() < 0.5) {
+                createEmerald(posX + (width / 2) - 10, elevation + height + 30);
+            }
+
+            if (isGoal) {
+                const key = document.createElement('div');
+                key.id = 'key';
+                key.style.left = (posX + width/2 - 15) + 'px';
+                key.style.bottom = (elevation + height + 40) + 'px';
+                rocksContainer.appendChild(key);
+                keyObj = { el: key, x: posX + width/2 - 15, y: elevation + height + 40 };
+            }
+        }
+
+        function createEmerald(ex, ey) {
+            const el = document.createElement('div');
+            el.className = 'emerald';
+            el.style.left = ex + 'px';
+            el.style.bottom = ey + 'px';
+            rocksContainer.appendChild(el);
+            emeraldsArray.push({ el, x: ex, y: ey });
+        }
+
+        function initLevel() {
+            rocksContainer.innerHTML = '';
+            effectsLayer.innerHTML = '';
+            rocks = []; splashes = []; emeraldsArray = [];
+            generatedX = 0; lastRockType = 'static'; finalSpawned = false;
+            keyObj = null; isDead = false; hasWon = false; health = 100; emeralds = 0;
+            x = 100; y = 250; vx = 0; vy = 0; currentStandingRock = null;
+            
+            healthUI.innerText = "HEALTH: 100";
+            healthUI.style.color = "white";
+            emeraldUI.innerText = "💎 0";
+            progressFill.style.width = "0%";
+            gameOverScreen.style.display = 'none';
+            winScreen.style.display = 'none';
+            player.style.backgroundColor = "#ff3333";
+            player.style.transform = "rotate(0deg)";
+            player.style.opacity = "1";
+
+            createRock(0, 400, 50, 120, 'static');
+            generatedX = 400;
+            generateAhead();
+        }
+
+        function generateAhead() {
+            if (finalSpawned) return;
+            while (generatedX < x + 1500) {
+                if (generatedX > goalDistance) {
+                    createRock(generatedX + 250, 200, 50, 150, 'static', true);
+                    finalSpawned = true; break;
+                }
+                const gap = 80 + Math.random() * 100;
+                const width = 60 + Math.random() * 100;
+                const elevation = 120 + Math.random() * 60;
+                let type = 'static';
+                if (lastRockType !== 'auto') {
+                    const r = Math.random();
+                    if (r < 0.25) type = 'auto'; else if (r < 0.65) type = 'touch';
+                }
+                lastRockType = type;
+                createRock(generatedX + gap, width, 50, elevation, type);
+                generatedX += gap + width;
+            }
+        }
+
+        function createSplash() {
+            const sx = x + (Math.random() * 1000 - 400);
+            const drop = document.createElement('div');
+            drop.className = 'splash-drop';
+            drop.style.left = sx + 'px';
+            drop.style.bottom = '90px';
+            effectsLayer.appendChild(drop);
+            splashes.push({ el: drop, x: sx, y: 90, vx: (Math.random()-0.5)*4, vy: 15+Math.random()*8 });
+        }
+
+        function takeDamage(amt = 20) {
+            if (isDead || hasWon) return;
+            health -= amt;
+            healthUI.innerText = "HEALTH: " + Math.max(0, health);
+            healthUI.style.color = "red";
+            player.style.backgroundColor = "white";
+            setTimeout(() => {
+                healthUI.style.color = "white";
+                player.style.backgroundColor = "#ff3333";
+            }, 100);
+            if (health <= 0) die();
+        }
+
+        function die() {
+            if (isDead) return;
+            isDead = true;
+            health = 0;
+            healthUI.innerText = "HEALTH: 0";
+            player.style.backgroundColor = "#444";
+            player.style.transform = "rotate(180deg)";
+        }
+
+        function win() {
+            hasWon = true; vx = 0; vy = 0;
+            winScreen.style.display = 'block';
+        }
+
+        function triggerShock(xPos, yPos, rA, rB, now) {
+            rA.speedFactor = 0.1; rA.isSlowed = true; rA.hitTime = now;
+            rB.speedFactor = 0.1; rB.isSlowed = true; rB.hitTime = now;
+            gameWorld.classList.remove('shake-effect');
+            void gameWorld.offsetWidth;
+            gameWorld.classList.add('shake-effect');
+            const shock = document.createElement('div');
+            shock.className = 'shockwave'; shock.style.left = xPos + 'px'; shock.style.bottom = yPos + 'px';
+            effectsLayer.appendChild(shock); setTimeout(() => shock.remove(), 400);
+            const dist = Math.sqrt((x+20-xPos)**2 + (y+20-yPos)**2);
+            if (dist < 400) {
+                let f = dist < 100 ? 18 : dist < 250 ? 6 : 2;
+                vx = (x+20 > xPos ? 1 : -1) * f; vy = dist < 100 ? -12 : -6;
+                onGround = false; currentStandingRock = null;
+            }
+        }
+
+        retryBtn.addEventListener('click', initLevel);
+        winBtn.addEventListener('click', initLevel);
+
+        function handleJump() {
+            if (isDead || hasWon) return;
+            if (onGround || jumpsLeft > 0) {
+                vy = jumpStrength;
+                onGround = false;
+                currentStandingRock = null;
+                jumpsLeft--;
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'a' || k === 'arrowleft') inputs.left = true;
+            if (k === 'd' || k === 'arrowright') inputs.right = true;
+            if (e.key === ' ') handleJump();
+        });
+        window.addEventListener('keyup', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'a' || k === 'arrowleft') inputs.left = false;
+            if (k === 'd' || k === 'arrowright') inputs.right = false;
+        });
+
+        function bind(id, v, a) {
+            const z = document.getElementById(id);
+            z.addEventListener('touchstart', (e) => {
+                e.preventDefault(); 
+                if (a === 'jump') handleJump();
+                else { inputs[a] = true; v.classList.add('pressed'); }
+            });
+            z.addEventListener('touchend', (e) => { e.preventDefault(); inputs[a] = false; v.classList.remove('pressed'); });
+        }
+        bind('zone-left', visLeft, 'left'); bind('zone-right', visRight, 'right'); bind('zone-jump', visJump, 'jump');
+
+        function loop() {
+            if (isDead) {
+                if (y > -50) { y -= 2; player.style.bottom = y + 'px'; player.style.opacity = Math.max(0, y / 100); }
+                else gameOverScreen.style.display = 'block';
+                requestAnimationFrame(loop); return;
+            }
+            if (hasWon) { requestAnimationFrame(loop); return; }
+
+            const now = Date.now();
+            
+            // Progress bar
+            let prog = Math.min(100, (x / goalDistance) * 100);
+            progressFill.style.width = prog + "%";
+
+            if (Math.random() < 0.005) createSplash(); 
+
+            // Update Splashes
+            for (let i = splashes.length - 1; i >= 0; i--) {
+                let s = splashes[i]; s.x += s.vx; s.y += s.vy; s.vy -= 0.4;
+                s.el.style.left = s.x + 'px'; s.el.style.bottom = s.y + 'px';
+                if (Math.abs(s.x - (x+20)) < 30 && Math.abs(s.y - (y+20)) < 30) { takeDamage(15); s.el.remove(); splashes.splice(i, 1); continue; }
+                if (s.y < 80) { s.el.remove(); splashes.splice(i, 1); }
+            }
+
+            // Emerald Logic
+            for (let i = emeraldsArray.length - 1; i >= 0; i--) {
+                let em = emeraldsArray[i];
+                if (Math.abs(x - em.x) < 40 && Math.abs(y - em.y) < 50) {
+                    emeralds++;
+                    emeraldUI.innerText = "💎 " + emeralds;
+                    em.el.remove();
+                    emeraldsArray.splice(i, 1);
+                }
+            }
+
+            // Update Rocks
+            rocks.forEach(r => {
+                r.prevLeft = r.currentLeft;
+                if (r.isSlowed) {
+                    let elapsed = now - r.hitTime;
+                    if (elapsed > 2400) { r.speedFactor = 1.0; r.isSlowed = false; }
+                    else r.speedFactor = 0.15 + (0.85 * (elapsed / 2400));
+                }
+                if (r.type === 'auto') {
+                    r.phase += r.autoSpeed * r.speedFactor;
+                    r.currentLeft = r.startX + Math.sin(r.phase) * r.autoRange;
+                } else if (r.type === 'touch' && currentStandingRock === r) {
+                    r.phase += r.touchSpeed * r.speedFactor;
+                    r.currentLeft = r.startX + Math.sin(r.phase) * r.touchRange;
+                }
+                r.element.style.left = r.currentLeft + 'px';
+            });
+
+            // Rock Collisions
+            for (let i = 0; i < rocks.length; i++) {
+                let r1 = rocks[i]; if (r1.type === 'static' || r1.isGoal) continue;
+                for (let j = 0; j < rocks.length; j++) {
+                    if (i === j) continue; let r2 = rocks[j];
+                    if (Math.abs(r1.currentLeft - r2.currentLeft) < r1.width && Math.abs(r1.bottom - r2.bottom) < 40) {
+                        const overlap = Math.min(r1.currentLeft+r1.width, r2.currentLeft+r2.width) - Math.max(r1.currentLeft, r2.currentLeft);
+                        if (overlap > 40 && now - lastShockTime > shockCooldown) {
+                            lastShockTime = now;
+                            triggerShock((r1.currentLeft+r2.currentLeft+r1.width)/2, r1.bottom+25, r1, r2, now);
+                        }
+                    }
+                }
+            }
+
+            // Physics
+            if (inputs.right && vx < maxSpeed) vx += speed;
+            if (inputs.left && vx > -maxSpeed) vx -= speed;
+            vx *= onGround ? frictionGround : frictionAir;
+            x += vx; if (x < 0) { x = 0; vx = 0; }
+            vy += gravity; y -= vy;
+
+            let landed = false;
+            for (let r of rocks) {
+                if (x + 30 > r.currentLeft && x < r.currentLeft + r.width - 10) {
+                    if (y <= r.bottom + r.height && y >= r.bottom + r.height - 25 && vy > 0) {
+                        y = r.bottom + r.height; vy = 0; onGround = true; landed = true; 
+                        jumpsLeft = 2; // Reset jumps on ground
+                        currentStandingRock = r;
+                    }
+                }
+            }
+            if (!landed && currentStandingRock) {
+                if (x + 30 > currentStandingRock.currentLeft && x < currentStandingRock.currentLeft + currentStandingRock.width - 10) {
+                    onGround = true;
+                } else { 
+                    onGround = false; 
+                    currentStandingRock = null; 
+                    if(jumpsLeft === 2) jumpsLeft = 1; // Falling counts as 1 jump used
+                }
+            }
+            if (onGround && currentStandingRock) x += (currentStandingRock.currentLeft - currentStandingRock.prevLeft);
+
+            if (keyObj && Math.abs(x - keyObj.x) < 50 && Math.abs(y - keyObj.y) < 80) win();
+            if (generatedX < x + 1500) generateAhead();
+            
+            // INSTANT DEATH ACID
+            if (y < acidHeight) {
+                die();
+            }
+
+            cameraRig.style.transform = `translateX(${-x + (window.innerWidth * 0.3)}px)`;
+            player.style.left = x + 'px'; player.style.bottom = y + 'px';
+            requestAnimationFrame(loop);
+        }
+
+        initLevel();
+        loop();
+    </script>
+</body>
+</html>
